@@ -1,0 +1,136 @@
+show databases;
+use medicine_refill_tracker;
+
+CREATE TABLE aff_persons(patient_id INT PRIMARY KEY,name VARCHAR(20),age INT,illness_type VARCHAR(20));
+INSERT INTO aff_persons(patient_id,name,age,illness_type) VALUES 
+(1,'Ramesh Kumar',52,'Diabetes'),
+(2,'Anitha Raj',46,'Hypertension'),
+(3,'Prakash M',61,'Thyroid'),
+(4,'Sahana Devi',35,'Asthma'),
+(5,'Vinoth R',28,'Diabetes');
+
+CREATE TABLE medicines(medicine_id INT,name VARCHAR(30),dosage VARCHAR(50),stock_available INT PRIMARY KEY);
+INSERT INTO medicines(medicine_id,name,dosage,stock_available) VALUES 
+(101,'Metformin','500mg',200),
+(102,'Amlodipine','10mg',150),
+(103,'Levothroxine','50mcg',180),
+(104,'Salbutamol Inhaler','100mcg',90);
+
+CREATE TABLE prescription(prescription_id INT,patient_id INT,medicine_id INT,dose_per_day INT,prescribed_date DATE);
+INSERT INTO prescription(prescription_id,patient_id,medicine_id,dose_per_day,prescribed_date) VALUES 
+(1001,1,101,2,'2024-06-01'),
+(1002,2,102,1,'2024-06-05'),
+(1003,3,103,1,'2024-06-10'),
+(1004,4,104,2,'2024-06-03'),
+(1005,5,101,1,'2024-06-12'),
+(1006,2,101,1,'2024-06-15');
+
+CREATE TABLE purchase(purchase_id INT PRIMARY KEY,patient_id INT,medicine_id INT,purchase_date DATE,quantity INT);
+INSERT INTO purchase (purchase_id,patient_id,medicine_id,purchase_date,quantity) VALUES
+(5001,1,101,'2024-06-01',60),
+(5002,2,102,'2024-06-05',30),
+(5003,3,103,'2024-06-10',30),
+(5004,4,104,'2024-06-03',60),
+(5005,5,101,'2024-06-12',30),
+(5006,2,101,'2024-06-16',30),
+(5007,1,101,'2024-06-20',60),
+(5008,3,103,'2024-06-17',30),
+(5009,4,104,'2024-06-15',30),
+(5010,5,101,'2024-06-20',30);
+
+DROP TABLE IF EXISTS final ;
+SELECT * FROM aff_persons;
+SELECT * FROM medicines;
+SELECT * FROM prescription;
+SELECT * FROM purchase;
+
+select * from aff_persons where name='Prakash M' or age>50; -- high age affected person details 
+select patient_id,name,age,illness_type from aff_persons where name='Ramesh Kumar';-- or this too
+select * from aff_persons where age=52;-- this too
+
+select medicine_id,name,dosage from medicines where medicine_id>100; -- shows three columns based on condition
+select * from medicines where dosage>'100mg';
+select * from medicines where stock_available>100; -- check stock availability in medicines
+
+select count(*) from purchase where medicine_id=101;
+
+-- how many purchases were made for each medicines
+select medicine_id, SUM(quantity) as quantity_sold
+from purchase
+group by medicine_id;
+
+-- what is the total quantity of each medicine sold
+select medicine_id, sum(quantity)
+from purchase
+group by medicine_id;
+
+-- which patients are older than 40
+select patient_id,name,age from aff_persons
+where age<40;
+
+-- show patients who have purchased more than one medicine
+select patient_id, count(*)
+from purchase
+group by patient_id
+having count(*) >1;
+
+-- How much revenue was generated per medicine?
+select medicine_id, sum(total_price) as revenue
+from purchase
+group by medicine_id;
+
+--  Are there any patients who repeatedly purchase the same medicine within a short period?
+select patient_id,medicine_id, count(*) as repeated,
+min(purchase_date) as first_time,
+max(purchase_date) as last_time
+from purchase
+group by patient_id,medicine_id;
+HAVING repeated >1 ,datediff(first_time,last_time);
+
+-- which medicines are low in stock and need to be refilled urgently?
+select medicine_id, min(stock_available) as stocks
+from medicines
+group by medicine_id;
+ -- or
+ select * from medicines where stock_available<100;
+
+-- sub query
+select patient_id 
+(select name from medicines) as medicine
+from aff_persons ;
+
+SELECT 
+    patient_id,
+    (SELECT name FROM medicines LIMIT 1) AS medicine
+FROM 
+    aff_persons;
+---view
+CREATE VIEW final as
+select patient_id,name
+from aff_persons
+where age>35;
+select * from final;
+
+select patient_id,name from aff_persons where age>35;
+drop view final;
+
+---- joins
+
+
+
+
+
+
+
+ALTER TABLE purchase ADD COLUMN total_price INT;
+ALTER TABLE medicines ADD COLUMN unit_price INT;
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE purchase SET total_price=670 WHERE purchase_id=5010;
+UPDATE purchase 
+JOIN medicines ON purchase.medicine_id=medicines.medicine_id
+SET purchase.total_price=medicines.unit_price * purchase.quantity;
+
+SET SQL_SAFE_UPDATES = 1;
+DESC purchase;
+ALTER TABLE purchase ADD COLUMN total_price INT;
